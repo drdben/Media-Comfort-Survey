@@ -1,0 +1,17 @@
+{
+  "researchTitle": "Watching Together",
+  "estimatedMinutes": 12,
+  "clips": [
+    {"id":"clip-01","title":"Clip 1","url":"https://www.youtube.com/watch?v=mz6dgt11n-E","note":""},
+    {"id":"clip-02","title":"Clip 2","url":"https://youtube.com/shorts/PcBPbpPCPcQ?si=sxN5MYp85vakGkA7","note":""},
+    {"id":"clip-03","title":"Clip 3","url":"https://youtube.com/shorts/lIAdPolfcpw?si=g11mMkAlnW3FioxT","note":""},
+    {"id":"clip-04","title":"Clip 4","url":"https://www.youtube.com/shorts/6GEmAYazwyg","note":""},
+    {"id":"clip-05","title":"Clip 5","url":"https://www.youtube.com/shorts/Pu822ETn4Ds","note":""},
+    {"id":"clip-06","title":"Clip 6","url":"https://youtube.com/shorts/0NgaOpQr6fE?si=R8SgRQMNciQv1H1t","note":""},
+    {"id":"clip-07","title":"Clip 7","url":"https://www.youtube.com/shorts/hX2ujhxHg_4","note":""},
+    {"id":"clip-08","title":"Clip 8","url":"https://youtube.com/shorts/NGkmKaLFeNI?si=bH-zRSg-2UoMgqEF","note":""},
+    {"id":"clip-09","title":"Clip 9","url":"https://www.youtube.com/shorts/GfvHcweejA4","note":""},
+    {"id":"clip-10","title":"Clip 10","url":"https://youtube.com/shorts/pPDAfWgO-4c?si=eEOKv2r5ku7jtOCL","note":""},
+    {"id":"clip-11","title":"Clip 11","url":"https://youtube.com/shorts/fdyfAVKRxfg?si=pS6wm2kpAvvZYVMn","note":""}
+  ]
+}

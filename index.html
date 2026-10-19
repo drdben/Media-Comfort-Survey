@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1e8">
+  <title>Watching Together — Media Comfort Survey</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Watching Together home"><span class="brand-mark">WT</span><span>Watching Together</span></a>
+    <button class="text-button" id="organizer-button" type="button">Researcher tools</button>
+  </header>
+
+  <main class="shell">
+    <section class="hero" id="welcome-screen">
+      <div class="eyebrow"><span class="eyebrow-dot"></span> MEDIA & CULTURE · SHORT SURVEY</div>
+      <h1>What feels right<br><em>to watch together?</em></h1>
+      <p class="intro">A short research survey about how comfortable different kinds of entertainment feel in different company.</p>
+      <div class="survey-meta"><span><b id="clip-count">—</b> short clips</span><span class="meta-sep"></span><span>About <b id="time-estimate">12 minutes</b></span></div>
+      <div class="notice-card">
+        <div class="notice-icon" aria-hidden="true">i</div>
+        <div><strong>A note about the clips</strong><p id="sensitivity-notice">Upcoming clips may include profanity, verbal aggression, sexual explicitness, violent or disturbing imagery, substance use, horror, or discriminatory and identity-directed language. You may skip any question or stop at any time.</p></div>
+      </div>
+      <div class="privacy-note"><span aria-hidden="true">◌</span><p>Your name and answers are saved in the file you download at the end. This survey does not send responses to a server.</p></div>
+      <button class="primary-button" id="start-button" type="button">Begin survey <span aria-hidden="true">↗</span></button>
+      <p class="consent-hint">You must be 18 or older to take part. Consent is requested on the next screen.</p>
+    </section>
+
+    <section class="form-screen hidden" id="survey-screen" aria-live="polite">
+      <div class="progress-row"><span id="step-label">BACKGROUND</span><span id="progress-label">1 of 2</span></div>
+      <div class="progress-track"><div id="progress-fill"></div></div>
+      <div id="survey-content"></div>
+    </section>
+
+    <section class="form-screen hidden" id="organizer-screen">
+      <div class="progress-row"><span>RESEARCHER TOOLS</span><button type="button" class="text-button" id="close-organizer">Close</button></div>
+      <h2>Response files</h2>
+      <p class="muted">Each participant downloads a JSON response file containing their name and answers. Import the files here to combine them into one CSV spreadsheet. Processing happens in this browser.</p>
+      <label class="file-drop" for="response-files"><span class="file-icon">＋</span><strong>Select response files</strong><span>Choose one or more <code>.json</code> files</span><input id="response-files" type="file" accept=".json,application/json" multiple></label>
+      <p id="import-status" class="muted small"></p>
+      <button class="primary-button" id="export-csv" type="button" disabled>Download combined CSV <span aria-hidden="true">↓</span></button>
+      <div class="organizer-divider"></div>
+      <h3>Set up your clips</h3>
+      <p class="muted">Edit <code>clips.json</code> in the survey folder before sharing this survey. Add one item per clip, with a unique id, title, optional content note, and a YouTube or Reddit URL. See the README for examples and embedding details.</p>
+    </section>
+  </main>
+  <footer><span>RESEARCH SURVEY</span><span>Take your time · Skip anything</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
