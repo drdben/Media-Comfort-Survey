@@ -1,6 +1,9 @@
 const AGE_GROUPS = ["18–24", "25–34", "35–44", "45–54", "55–64", "65+"];
 const EDUCATION = ["10th", "12th", "University (pursuing)", "Graduate", "Postgraduate"];
-const SETTINGS = ["On my own", "With my parents", "With children under 12 (or hypothetically)", "With my friends"];
+const LANGUAGES = ["Hindi", "Tamil", "Telugu", "Bengali", "Malayalam", "Marathi", "Kannada", "Punjabi", "Gujarati", "Odia", "Assamese", "English", "Bhojpuri", "Urdu", "Konkani"];
+const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Romance", "Thriller", "Horror", "Mystery", "Science Fiction (Sci-Fi)", "Fantasy", "Crime", "Animation", "Documentary", "Musical", "War", "Historical", "Western", "Family", "Sports", "Biography (Biopic)", "Other"];
+const CHILDREN_OPTIONS = ["No", "0-5", "7-12", "13+"];
+const SETTINGS = ["On my own", "With my parents", "With children (hypothetically)", "With my friends"];
 const DEFAULT_CLIPS = [
   {id:"clip-01",title:"Clip 1",url:"https://www.youtube.com/watch?v=mz6dgt11n-E",note:""},
   {id:"clip-02",title:"Clip 2",url:"https://youtube.com/shorts/PcBPbpPCPcQ?si=sxN5MYp85vakGkA7",note:""},
@@ -35,7 +38,7 @@ byId("start-button").addEventListener("click", () => {
     alert("This survey is being set up. The researcher needs to add clips to clips.json before participants can begin.");
     return;
   }
-  answers = { demographics: { languages: [""], genres: [""] }, ratings: [] };
+  answers = { demographics: { languages: [], genres: [] }, ratings: [] };
   pendingResponse = null;
   currentClip = 0;
   byId("welcome-screen").classList.add("hidden");
@@ -58,14 +61,14 @@ function renderDemographics() {
   byId("survey-content").innerHTML = `<h2>A little about you</h2><p class="section-intro">These optional questions help us understand the range of perspectives in the study. Please skip anything you would rather not answer.</p>
     ${inputField("participantName", "Your name", "Enter your name", "Your name will be included with your answers in the response file.", true)}
     <div class="field"><span class="field-label">Age group<span class="optional">OPTIONAL</span></span><div class="choices">${AGE_GROUPS.map(x => `<label class="choice"><input type="radio" name="ageGroup" value="${x}"><span>${x}</span></label>`).join("")}</div></div>
-    <div class="field"><span class="field-label">Gender<span class="optional">OPTIONAL</span></span><div class="choices">${["M", "F", "T", "Self-describe"].map(x => `<label class="choice"><input type="radio" name="gender" value="${x}"><span>${x}</span></label>`).join("")}</div><input class="input hidden" id="genderSelf" placeholder="How would you describe your gender?" style="margin-top:9px"></div>
+    <div class="field"><span class="field-label">Gender<span class="optional">OPTIONAL</span></span><div class="choices">${["Female", "Male", "Transgender", "Self-describe"].map(x => `<label class="choice"><input type="radio" name="gender" value="${x}"><span>${x}</span></label>`).join("")}</div><input class="input hidden" id="genderSelf" placeholder="How would you describe your gender?" style="margin-top:9px"></div>
     ${inputField("region", "State or region you hail from", "e.g. Rajasthan")}
     ${inputField("schooling", "State or city where you went to school", "Type NA if you had no schooling")}
     <div class="field"><label class="field-label" for="education">Highest education qualification<span class="optional">OPTIONAL</span></label><select class="select" id="education"><option value="">Select an option</option>${EDUCATION.map(x => `<option>${x}</option>`).join("")}</select></div>
-    ${listField("languages", "Languages you speak", "Add a language")}
+    ${multiSelectField("languages", "Language you speak and/or watch content in", LANGUAGES)}
     ${inputField("watching", "Who do you typically watch films with?", "e.g. family, friends, mostly alone")}
-    ${inputField("children", "Do children live in your household?", "You can say yes, no, or describe")}
-    ${listField("genres", "Genres you enjoy", "Add a genre")}
+    <div class="field"><label class="field-label" for="children">Do children live in your household?<span class="optional">OPTIONAL</span></label><select class="select" id="children"><option value="">Select an option</option>${CHILDREN_OPTIONS.map(x => `<option value="${x}">${x}</option>`).join("")}</select></div>
+    ${multiSelectField("genres", "Genres you enjoy", GENRES)}
     <div class="consent-box"><p><strong>Consent for research use</strong><br>Your name and responses will be used for academic research about media viewing comfort and translation. Your response is identifiable to the researcher because it includes your name. Participation is voluntary. You may skip any optional question or stop before submitting. If you finish and select Submit response, your answers will be sent to the researcher's Google Sheet. You may also download a JSON copy.</p><label class="consent-check"><input id="consent" type="checkbox"><span>I am 18 or older, have read the information above, and agree to take part.</span></label></div>
     <div class="form-actions"><span></span><button class="primary-button" id="to-clips" type="button">Continue to clips <span aria-hidden="true">→</span></button></div>`;
   document.querySelectorAll('input[name="ageGroup"]').forEach(el => el.addEventListener("change", e => d.ageGroup = e.target.value));
@@ -74,29 +77,18 @@ function renderDemographics() {
     byId("genderSelf").classList.toggle("hidden", e.target.value !== "Self-describe");
   }));
   byId("genderSelf").addEventListener("input", e => d.genderSelf = e.target.value);
-  [["region", "region"], ["schooling", "schooling"], ["watching", "typicalViewingCompany"], ["children", "childrenInHousehold"]].forEach(([id,key]) => byId(id).addEventListener("input", e => d[key] = e.target.value));
+  [["region", "region"], ["schooling", "schooling"], ["watching", "typicalViewingCompany"]].forEach(([id,key]) => byId(id).addEventListener("input", e => d[key] = e.target.value));
   byId("education").addEventListener("change", e => d.education = e.target.value);
-  bindList("languages", d); bindList("genres", d);
+  byId("children").addEventListener("change", e => d.childrenInHousehold = e.target.value);
+  bindMultiSelect("languages", d); bindMultiSelect("genres", d);
   if (d.ageGroup) { const age = document.querySelector(`input[name="ageGroup"][value="${CSS.escape(d.ageGroup)}"]`); if (age) age.checked = true; }
   if (d.gender) { const gender = document.querySelector(`input[name="gender"][value="${CSS.escape(d.gender)}"]`); if (gender) gender.checked = true; }
   byId("genderSelf").value = d.genderSelf || "";
   byId("genderSelf").classList.toggle("hidden", d.gender !== "Self-describe");
-  [["participantName","participantName"],["region","region"],["schooling","schooling"],["watching","typicalViewingCompany"],["children","childrenInHousehold"]].forEach(([id,key]) => byId(id).value = d[key] || "");
+  [["participantName","participantName"],["region","region"],["schooling","schooling"],["watching","typicalViewingCompany"]].forEach(([id,key]) => byId(id).value = d[key] || "");
   byId("education").value = d.education || "";
+  byId("children").value = d.childrenInHousehold || "";
   byId("consent").checked = Boolean(d.consent);
-  [["languages","languages"],["genres","genres"]].forEach(([key, field]) => {
-    const saved = d[field] || [];
-    const list = byId(`${key}-list`);
-    list.querySelector("input").value = saved[0] || "";
-    for (const value of saved.slice(1)) {
-      const row = document.createElement("div"); row.className = "tag-row";
-      row.innerHTML = `<input class="input" type="text" data-list="${key}" placeholder="Add another"><button class="small-button" type="button" aria-label="Remove item">Remove</button>`;
-      row.querySelector("input").value = value;
-      row.querySelector("button").addEventListener("click", () => { row.remove(); d[field] = [...list.querySelectorAll("input")].map(x => x.value.trim()).filter(Boolean); });
-      row.querySelector("input").addEventListener("input", () => { d[field] = [...list.querySelectorAll("input")].map(x => x.value.trim()).filter(Boolean); });
-      list.append(row);
-    }
-  });
   byId("to-clips").addEventListener("click", () => {
     d.participantName = byId("participantName").value.trim();
     if (!d.participantName) { alert("Please enter your name to continue."); byId("participantName").focus(); return; }
@@ -104,19 +96,22 @@ function renderDemographics() {
     d.consent = true; renderClip();
   });
 }
-function listField(key, label, button) {
-  return `<div class="field"><span class="field-label">${label}<span class="optional">OPTIONAL</span></span><div class="tag-list" id="${key}-list"><div class="tag-row"><input class="input" type="text" data-list="${key}" placeholder="${button.replace("Add a ", "e.g. ")}"></div></div><button class="small-button" type="button" data-add="${key}">＋ ${button}</button></div>`;
+function multiSelectField(key, label, options) {
+  return `<div class="field"><span class="field-label">${label}<span class="optional">OPTIONAL · SELECT ALL THAT APPLY</span></span><details class="multi-select" id="${key}-select"><summary id="${key}-summary">Choose ${key === "languages" ? "languages" : "genres"}</summary><div class="multi-options">${options.map((value, i) => `<label><input type="checkbox" data-multi="${key}" value="${escapeHtml(value)}" id="${key}-${i}"><span>${escapeHtml(value)}</span></label>`).join("")}</div></details></div>`;
 }
-function bindList(key, object) {
-  const list = byId(`${key}-list`);
-  const sync = () => { object[key] = [...list.querySelectorAll("input")].map(x => x.value.trim()).filter(Boolean); };
-  list.querySelector("input").addEventListener("input", sync);
-  document.querySelector(`[data-add="${key}"]`).addEventListener("click", () => {
-    const row = document.createElement("div"); row.className = "tag-row";
-    row.innerHTML = `<input class="input" type="text" data-list="${key}" placeholder="Add another"><button class="small-button" type="button" aria-label="Remove item">Remove</button>`;
-    row.querySelector("button").addEventListener("click", () => { row.remove(); sync(); });
-    row.querySelector("input").addEventListener("input", sync); list.append(row); row.querySelector("input").focus();
+function bindMultiSelect(key, object) {
+  const details = byId(`${key}-select`);
+  const summary = byId(`${key}-summary`);
+  const checkboxes = [...details.querySelectorAll(`input[data-multi="${key}"]`)];
+  const saved = Array.isArray(object[key]) ? object[key] : object[key] ? [object[key]] : [];
+  checkboxes.forEach(input => {
+    input.checked = saved.includes(input.value);
+    input.addEventListener("change", () => {
+      object[key] = checkboxes.filter(item => item.checked).map(item => item.value);
+      summary.textContent = object[key].length ? object[key].join(", ") : `Choose ${key === "languages" ? "languages" : "genres"}`;
+    });
   });
+  if (saved.length) summary.textContent = saved.join(", ");
 }
 function getEmbed(url) {
   try {
