@@ -14,6 +14,8 @@ const DEFAULT_CLIPS = [
   {id:"clip-10",title:"Clip 10",url:"https://youtube.com/shorts/pPDAfWgO-4c?si=eEOKv2r5ku7jtOCL",note:""},
   {id:"clip-11",title:"Clip 11",url:"https://youtube.com/shorts/fdyfAVKRxfg?si=pS6wm2kpAvvZYVMn",note:""}
 ];
+// Paste the deployed Apps Script web app URL here (ends in /exec).
+const GOOGLE_SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwMWL3oGGtWQPuVEDamRs6m6I_vBtxWE43MPE5eqsS8Ornxx6kHz0KUFBBiPdv7zaFkog/exec";
 let config = { clips: DEFAULT_CLIPS, estimatedMinutes: 12 };
 let answers = {};
 let currentClip = 0;
@@ -34,6 +36,7 @@ byId("start-button").addEventListener("click", () => {
     return;
   }
   answers = { demographics: { languages: [""], genres: [""] }, ratings: [] };
+  pendingResponse = null;
   currentClip = 0;
   byId("welcome-screen").classList.add("hidden");
   byId("survey-screen").classList.remove("hidden");
@@ -63,7 +66,7 @@ function renderDemographics() {
     ${inputField("watching", "Who do you typically watch films with?", "e.g. family, friends, mostly alone")}
     ${inputField("children", "Do children live in your household?", "You can say yes, no, or describe")}
     ${listField("genres", "Genres you enjoy", "Add a genre")}
-    <div class="consent-box"><p><strong>Consent for research use</strong><br>Your name and responses will be used for academic research about media viewing comfort and translation. Your response is identifiable to the researcher because it includes your name. Participation is voluntary. You may skip any optional question or stop before submitting. Your response file will be downloaded to this device and shared with the researcher only if you choose to send it. This survey does not upload responses to a server.</p><label class="consent-check"><input id="consent" type="checkbox"><span>I am 18 or older, have read the information above, and agree to take part.</span></label></div>
+    <div class="consent-box"><p><strong>Consent for research use</strong><br>Your name and responses will be used for academic research about media viewing comfort and translation. Your response is identifiable to the researcher because it includes your name. Participation is voluntary. You may skip any optional question or stop before submitting. If you finish and select Submit response, your answers will be sent to the researcher's Google Sheet. You may also download a JSON copy.</p><label class="consent-check"><input id="consent" type="checkbox"><span>I am 18 or older, have read the information above, and agree to take part.</span></label></div>
     <div class="form-actions"><span></span><button class="primary-button" id="to-clips" type="button">Continue to clips <span aria-hidden="true">→</span></button></div>`;
   document.querySelectorAll('input[name="ageGroup"]').forEach(el => el.addEventListener("change", e => d.ageGroup = e.target.value));
   document.querySelectorAll('input[name="gender"]').forEach(el => el.addEventListener("change", e => {
@@ -156,11 +159,65 @@ function collectRatings() {
 }
 function renderComplete() {
   setProgress(config.clips.length + 2, config.clips.length + 2, "COMPLETE");
-  byId("survey-content").innerHTML = `<h2>Thank you for taking part.</h2><p class="section-intro">Your responses are ready. Download the file, then send it to the researcher using the method they provided.</p><div class="complete-card"><strong>Your file stays with you</strong><p>Nothing was sent automatically. The downloaded file contains your name and clip ratings, so it identifies your response to the researcher.</p></div><button class="primary-button" id="download-response" type="button">Download my response <span aria-hidden="true">↓</span></button><p class="privacy-small">If you close this page without downloading, your answers will not be submitted. You may delete the downloaded file at any time.</p>`;
+  byId("survey-content").innerHTML = `<h2>Submit your response</h2><p class="section-intro">Your answers will be sent to the researcher's Google Sheet. You can also download a JSON copy for your records.</p><div class="complete-card" id="submission-card" aria-live="polite"><strong id="submission-title">Ready to submit</strong><p id="submission-message">Choose Submit response to send your answers securely to the survey spreadsheet.</p></div><div class="form-actions"><button class="small-button" id="download-response" type="button">Download JSON backup</button><button class="primary-button" id="submit-response" type="button">Submit response <span aria-hidden="true">→</span></button></div><p class="privacy-small">Your response includes the information you provided, including your name. Keep the JSON backup only if you want a local copy.</p>`;
   byId("download-response").addEventListener("click", downloadResponse);
+  byId("submit-response").addEventListener("click", submitResponse);
+}
+let pendingResponse = null;
+function makeResponse() {
+  if (!pendingResponse) pendingResponse = { survey: "Watching Together", schemaVersion: 1, submissionId: crypto.randomUUID(), submittedAt: new Date().toISOString(), ...answers };
+  return pendingResponse;
+}
+function setSubmissionState(title, message, state) {
+  byId("submission-title").textContent = title;
+  byId("submission-message").textContent = message;
+  byId("submission-card").dataset.state = state;
+}
+function confirmSubmission(id, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const callback = `sheetStatus_${id.replace(/-/g, "")}`;
+    let script = document.createElement("script");
+    const started = Date.now();
+    let timer;
+    function done(ok) { clearTimeout(timer); delete window[callback]; script.remove(); ok ? resolve(true) : reject(new Error("The spreadsheet did not confirm receipt in time.")); }
+    function checkAgain() {
+      script.remove();
+      script = document.createElement("script");
+      script.onerror = () => { if (Date.now() - started >= timeoutMs) done(false); else timer = setTimeout(checkAgain, 750); };
+      script.src = `${GOOGLE_SHEETS_ENDPOINT}?check=${encodeURIComponent(id)}&callback=${callback}&_=${Date.now()}`;
+      document.head.append(script);
+    }
+    window[callback] = result => {
+      if (result?.received) done(true);
+      else if (Date.now() - started >= timeoutMs) done(false);
+      else timer = setTimeout(checkAgain, 750);
+    };
+    timer = setTimeout(() => done(false), timeoutMs);
+    checkAgain();
+  });
+}
+async function submitResponse() {
+  const button = byId("submit-response");
+  if (!GOOGLE_SHEETS_ENDPOINT.startsWith("https://script.google.com/macros/s/") || GOOGLE_SHEETS_ENDPOINT.includes("PASTE_")) {
+    setSubmissionState("Setup needed", "The researcher has not configured the spreadsheet endpoint yet. Download a JSON backup and contact the researcher.", "error");
+    return;
+  }
+  const response = makeResponse();
+  button.disabled = true;
+  setSubmissionState("Submitting…", "Sending your response and waiting for the spreadsheet to confirm it arrived.", "pending");
+  try {
+    await fetch(GOOGLE_SHEETS_ENDPOINT, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(response) });
+    await confirmSubmission(response.submissionId);
+    setSubmissionState("Response received", "The spreadsheet confirmed that your response was saved. You may download a JSON backup if you want one.", "success");
+    button.textContent = "Submitted";
+  } catch (error) {
+    setSubmissionState("Could not confirm submission", "Your response may not have reached the spreadsheet. Check your connection and try again, or download the JSON backup. Retrying will not create a duplicate.", "error");
+    button.disabled = false;
+    button.innerHTML = 'Retry submission <span aria-hidden="true">↻</span>';
+  }
 }
 function downloadResponse() {
-  const response = { survey: "Watching Together", schemaVersion: 1, submittedAt: new Date().toISOString(), ...answers };
+  const response = makeResponse();
   const blob = new Blob([JSON.stringify(response, null, 2)], {type:"application/json"});
   const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href=url; link.download=`media-comfort-response-${new Date().toISOString().slice(0,10)}.json`; link.click(); URL.revokeObjectURL(url);
 }
