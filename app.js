@@ -1,21 +1,22 @@
 const AGE_GROUPS = ["18–24", "25–34", "35–44", "45–54", "55–64", "65+"];
 const EDUCATION = ["10th", "12th", "University (pursuing)", "Graduate", "Postgraduate"];
 const LANGUAGES = ["Hindi", "Tamil", "Telugu", "Bengali", "Malayalam", "Marathi", "Kannada", "Punjabi", "Gujarati", "Odia", "Assamese", "English", "Bhojpuri", "Urdu", "Konkani"];
-const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Romance", "Thriller", "Horror", "Mystery", "Science Fiction (Sci-Fi)", "Fantasy", "Crime", "Animation", "Documentary", "Musical", "War", "Historical", "Western", "Family", "Sports", "Biography (Biopic)", "Other"];
+const GENRES = ["Action", "Adventure", "Comedy", "Drama", "Romance", "Thriller", "Horror", "Mystery", "Science Fiction (Sci-Fi)", "Fantasy", "Crime", "Animation", "Documentary", "Musical", "War", "Historical", "Western", "Family", "Sports", "Biography (Biopic)", "Other:"];
 const CHILDREN_OPTIONS = ["No", "0-5", "7-12", "13+"];
-const SETTINGS = ["On my own", "With my parents", "With children (hypothetically)", "With my friends"];
+const SETTINGS = ["On my own", "With my parents", "With children under 12 (or hypothetically)", "With my friends"];
 const DEFAULT_CLIPS = [
-  {id:"clip-01",title:"Clip 1",url:"https://www.youtube.com/watch?v=mz6dgt11n-E",note:""},
   {id:"clip-02",title:"Clip 2",url:"https://youtube.com/shorts/PcBPbpPCPcQ?si=sxN5MYp85vakGkA7",note:""},
   {id:"clip-03",title:"Clip 3",url:"https://youtube.com/shorts/lIAdPolfcpw?si=g11mMkAlnW3FioxT",note:""},
   {id:"clip-04",title:"Clip 4",url:"https://www.youtube.com/shorts/6GEmAYazwyg",note:""},
   {id:"clip-05",title:"Clip 5",url:"https://www.youtube.com/shorts/Pu822ETn4Ds",note:""},
-  {id:"clip-06",title:"Clip 6",url:"https://youtube.com/shorts/0NgaOpQr6fE?si=R8SgRQMNciQv1H1t",note:""},
   {id:"clip-07",title:"Clip 7",url:"https://www.youtube.com/shorts/hX2ujhxHg_4",note:""},
   {id:"clip-08",title:"Clip 8",url:"https://youtube.com/shorts/NGkmKaLFeNI?si=bH-zRSg-2UoMgqEF",note:""},
-  {id:"clip-09",title:"Clip 9",url:"https://www.youtube.com/shorts/GfvHcweejA4",note:""},
   {id:"clip-10",title:"Clip 10",url:"https://youtube.com/shorts/pPDAfWgO-4c?si=eEOKv2r5ku7jtOCL",note:""},
-  {id:"clip-11",title:"Clip 11",url:"https://youtube.com/shorts/fdyfAVKRxfg?si=pS6wm2kpAvvZYVMn",note:""}
+  {id:"clip-11",title:"Clip 11",url:"https://youtube.com/shorts/fdyfAVKRxfg?si=pS6wm2kpAvvZYVMn",note:""},
+  {id:"domestic-violence-women",title:"Domestic violence against women",url:"https://www.youtube.com/shorts/7v_3OQUN0-M",note:"Visual content only; the audio is music."},
+  {id:"downrange-gore",title:"Downrange gore",url:"https://www.youtube.com/watch?v=7lIbKoTCFus&rco=1",note:"Please watch only the first 40 seconds."},
+  {id:"abuse-2",title:"Abuse 2",url:"https://youtu.be/jHn5u0PpPHs",note:""},
+  {id:"racism",title:"Racism",url:"https://youtube.com/shorts/icAquL0rG4I",note:""}
 ];
 // Paste the deployed Apps Script web app URL here (ends in /exec).
 const GOOGLE_SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwMWL3oGGtWQPuVEDamRs6m6I_vBtxWE43MPE5eqsS8Ornxx6kHz0KUFBBiPdv7zaFkog/exec";
@@ -130,14 +131,18 @@ function renderClip() {
   const step = currentClip + 2;
   setProgress(step, 2 + config.clips.length, `CLIP ${currentClip + 1} / ${config.clips.length}`);
   const embed = getEmbed(clip.url || "");
-  const ratings = SETTINGS.map((setting, i) => `<div class="rating-row"><span>${setting}</span><div class="rating-options" role="radiogroup" aria-label="Comfort ${setting}">${[1,2,3,4,5].map(n => `<span class="rating-option"><input type="radio" id="r${i}-${n}" name="rating-${i}" value="${n}"><label for="r${i}-${n}">${n}</label></span>`).join("")}</div></div>`).join("");
-  byId("survey-content").innerHTML = `<h2>${escapeHtml(clip.title || `Clip ${currentClip+1}`)}</h2><p class="section-intro">Watch the clip, then rate how comfortable you would feel watching it in each setting. Skip the clip if you prefer.</p>
+  const ratings = (kind, label) => SETTINGS.map((setting, i) => `<div class="rating-row"><span>${setting}</span><div class="rating-options" role="radiogroup" aria-label="${label} ${setting}">${[1,2,3,4,5].map(n => `<span class="rating-option"><input type="radio" id="${kind}-${i}-${n}" name="${kind}-rating-${i}" value="${n}"><label for="${kind}-${i}-${n}">${n}</label></span>`).join("")}</div></div>`).join("");
+  byId("survey-content").innerHTML = `<h2>${escapeHtml(clip.title || `Clip ${currentClip+1}`)}</h2><p class="section-intro">Watch the clip, then rate how awkward you would feel about its visual and verbal content in each setting. Skip the clip if you prefer.</p>
     <div class="clip-card"><div class="clip-frame">${embed ? `<iframe src="${escapeHtml(embed)}" title="${escapeHtml(clip.title || "Survey clip")}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>` : `<a class="clip-link" href="${escapeHtml(clip.url || "#")}" target="_blank" rel="noopener noreferrer">Open this clip in a new tab ↗</a>`}</div><div class="clip-copy"><strong>${escapeHtml(clip.title || "Video clip")}</strong>${clip.note ? `<p>${escapeHtml(clip.note)}</p>` : ""}</div></div>
-    <div class="rating-title">How comfortable would you feel?</div><p class="rating-scale">Choose one answer for each viewing situation.</p>${ratings}<div class="rating-ends"><span>1 · Not at all comfortable</span><span>5 · Very comfortable</span></div>
+    <div class="rating-title">Visual awkwardness</div><p class="rating-scale">How awkward would the visual content feel? Choose one answer for each viewing situation.</p>${ratings("visual", "Visual awkwardness")}<div class="rating-ends"><span>1 · Not at all awkward</span><span>5 · Very awkward</span></div>
+    <div class="rating-title">Verbal awkwardness</div><p class="rating-scale">How awkward would the spoken or written content feel? Choose one answer for each viewing situation.</p>${ratings("verbal", "Verbal awkwardness")}<div class="rating-ends"><span>1 · Not at all awkward</span><span>5 · Very awkward</span></div>
     <label class="choice skip-choice"><input type="checkbox" id="skip-clip"><span>Skip this clip</span></label>
     <div class="form-actions">${currentClip === 0 ? `<button class="back-button" id="back-demographics" type="button">← Back</button>` : `<button class="back-button" id="back-clip" type="button">← Previous clip</button>`}<button class="primary-button" id="next-clip" type="button">${currentClip + 1 === config.clips.length ? "Finish survey" : "Next clip"}<span aria-hidden="true">→</span></button></div>`;
   const saved = answers.ratings[currentClip];
-  if (saved) saved.scores?.forEach((v,i) => { const el = document.querySelector(`input[name="rating-${i}"][value="${v}"]`); if (el) el.checked = true; });
+  if (saved) {
+    (saved.visualScores || []).forEach((v,i) => { const el = document.querySelector(`input[name="visual-rating-${i}"][value="${v}"]`); if (el) el.checked = true; });
+    (saved.verbalScores || []).forEach((v,i) => { const el = document.querySelector(`input[name="verbal-rating-${i}"][value="${v}"]`); if (el) el.checked = true; });
+  }
   byId("skip-clip").checked = saved?.skipped || false;
   byId("back-demographics")?.addEventListener("click", renderDemographics);
   byId("back-clip")?.addEventListener("click", () => { collectRatings(); currentClip--; renderClip(); });
@@ -149,8 +154,9 @@ function renderClip() {
 }
 function collectRatings() {
   const skipped = byId("skip-clip").checked;
-  const scores = SETTINGS.map((_,i) => document.querySelector(`input[name="rating-${i}"]:checked`)?.value || "");
-  answers.ratings[currentClip] = { clipId: config.clips[currentClip].id, clipTitle: config.clips[currentClip].title, scores: skipped ? ["","","",""] : scores, skipped };
+  const visualScores = SETTINGS.map((_,i) => document.querySelector(`input[name="visual-rating-${i}"]:checked`)?.value || "");
+  const verbalScores = SETTINGS.map((_,i) => document.querySelector(`input[name="verbal-rating-${i}"]:checked`)?.value || "");
+  answers.ratings[currentClip] = { clipId: config.clips[currentClip].id, clipTitle: config.clips[currentClip].title, visualScores: skipped ? ["","","",""] : visualScores, verbalScores: skipped ? ["","","",""] : verbalScores, skipped };
 }
 function renderComplete() {
   setProgress(config.clips.length + 2, config.clips.length + 2, "COMPLETE");
@@ -160,7 +166,7 @@ function renderComplete() {
 }
 let pendingResponse = null;
 function makeResponse() {
-  if (!pendingResponse) pendingResponse = { survey: "Watching Together", schemaVersion: 1, submissionId: crypto.randomUUID(), submittedAt: new Date().toISOString(), ...answers };
+  if (!pendingResponse) pendingResponse = { survey: "Watching Together", schemaVersion: 2, submissionId: crypto.randomUUID(), submittedAt: new Date().toISOString(), ...answers };
   return pendingResponse;
 }
 function setSubmissionState(title, message, state) {
@@ -228,10 +234,10 @@ byId("response-files").addEventListener("change", async e => {
   byId("export-csv").disabled = importedResponses.length === 0;
 });
 byId("export-csv").addEventListener("click", () => {
-  const headers = ["response_id","submitted_at","participant_name","age_group","gender","gender_self_describe","region","schooling_location","education","languages","typical_viewing_company","children_in_household","genres",...config.clips.flatMap((clip) => ["alone","with_parents","with_children_under_12","with_friends"].map(setting => `comfort_${clip.id}_${setting}`)),...config.clips.map(clip=>`clip_${clip.id}_skipped`)];
+  const headers = ["response_id","submitted_at","participant_name","age_group","gender","gender_self_describe","region","schooling_location","education","languages","typical_viewing_company","children_in_household","genres",...config.clips.flatMap((clip) => ["visual_awkwardness","verbal_awkwardness"].flatMap(kind => ["alone","with_parents","with_children_under_12","with_friends"].map(setting => `${kind}_${clip.id}_${setting}`))),...config.clips.map(clip=>`clip_${clip.id}_skipped`)];
   const rows = importedResponses.map((r,index) => {
     const d=r.demographics||{}; const base=[index+1,r.submittedAt,d.participantName,d.ageGroup,d.gender,d.genderSelf,d.region,d.schooling,d.education,(d.languages||[]).join("; "),d.typicalViewingCompany,d.childrenInHousehold,(d.genres||[]).join("; ")];
-    const scoreVals=config.clips.flatMap((_,i)=>[0,1,2,3].map(j=>r.ratings?.[i]?.scores?.[j]||""));
+    const scoreVals=config.clips.flatMap((_,i)=>["visualScores","verbalScores"].flatMap(kind=>[0,1,2,3].map(j=>r.ratings?.[i]?.[kind]?.[j]||"")));
     const skipVals=config.clips.map((_,i)=>r.ratings?.[i]?.skipped ? "yes" : "no");
     return [...base,...scoreVals,...skipVals];
   });
