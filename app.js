@@ -24,8 +24,31 @@ let config = { clips: DEFAULT_CLIPS, estimatedMinutes: 12 };
 let answers = {};
 let currentClip = 0;
 let importedResponses = [];
+const DRAFT_STORAGE_KEY = "watching-together-survey-draft";
+let currentScreen = null;
 const byId = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+
+function readDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY));
+    return draft?.answers && Number.isInteger(draft.currentClip) ? draft : null;
+  } catch { return null; }
+}
+function saveDraft() {
+  if (!currentScreen) return;
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ answers, currentClip, currentScreen, savedAt: new Date().toISOString() }));
+  } catch { /* Saving is optional when browser storage is unavailable. */ }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+}
+function showSurvey() {
+  byId("welcome-screen").classList.add("hidden");
+  byId("survey-screen").classList.remove("hidden");
+  window.scrollTo(0, 0);
+}
 
 byId("clip-count").textContent = config.clips.length;
 fetch("clips.json").then(r => r.ok ? r.json() : Promise.reject()).then(data => {
@@ -39,26 +62,39 @@ byId("start-button").addEventListener("click", () => {
     alert("This survey is being set up. The researcher needs to add clips to clips.json before participants can begin.");
     return;
   }
+  const draft = readDraft();
+  if (draft && confirm("Saved survey progress was found on this browser. Select OK to resume it, or Cancel to start a new survey.")) {
+    answers = draft.answers;
+    answers.demographics ||= { languages: [], genres: [] };
+    answers.ratings ||= [];
+    currentClip = Math.min(Math.max(draft.currentClip, 0), config.clips.length - 1);
+    pendingResponse = null;
+    showSurvey();
+    if (draft.currentScreen === "clip") renderClip();
+    else if (draft.currentScreen === "complete") renderComplete();
+    else renderDemographics();
+    return;
+  }
+  clearDraft();
   answers = { demographics: { languages: [], genres: [] }, ratings: [] };
   pendingResponse = null;
   currentClip = 0;
-  byId("welcome-screen").classList.add("hidden");
-  byId("survey-screen").classList.remove("hidden");
+  showSurvey();
   renderDemographics();
-  window.scrollTo(0, 0);
 });
 
-function setProgress(step, count, label) {
+function setProgress(step, count, label, progressText = `${step} of ${count}`) {
   byId("step-label").textContent = label;
-  byId("progress-label").textContent = `${step} of ${count}`;
+  byId("progress-label").textContent = progressText;
   byId("progress-fill").style.width = `${Math.round((step / count) * 100)}%`;
 }
 function inputField(key, label, placeholder = "Type your answer", hint = "", required = false) {
   return `<div class="field"><label class="field-label" for="${key}">${label}<span class="optional">${required ? "REQUIRED" : "OPTIONAL"}</span></label><input class="input" id="${key}" name="${key}" type="text" placeholder="${escapeHtml(placeholder)}" ${required ? "required" : ""}>${hint ? `<p class="hint">${hint}</p>` : ""}</div>`;
 }
 function renderDemographics() {
+  currentScreen = "demographics";
   const d = answers.demographics;
-  setProgress(1, 2 + config.clips.length, "BACKGROUND");
+  setProgress(0, config.clips.length, "BACKGROUND", "Before clips");
   byId("survey-content").innerHTML = `<h2>A little about you</h2><p class="section-intro">These optional questions help us understand the range of perspectives in the study. Please skip anything you would rather not answer.</p>
     ${inputField("participantName", "Your name", "Enter your name", "Your name will be included with your answers in the response file.", true)}
     <div class="field"><span class="field-label">Age group<span class="optional">OPTIONAL</span></span><div class="choices">${AGE_GROUPS.map(x => `<label class="choice"><input type="radio" name="ageGroup" value="${x}"><span>${x}</span></label>`).join("")}</div></div>
@@ -78,6 +114,7 @@ function renderDemographics() {
     byId("genderSelf").classList.toggle("hidden", e.target.value !== "Self-describe");
   }));
   byId("genderSelf").addEventListener("input", e => d.genderSelf = e.target.value);
+  byId("participantName").addEventListener("input", e => d.participantName = e.target.value);
   [["region", "region"], ["schooling", "schooling"], ["watching", "typicalViewingCompany"]].forEach(([id,key]) => byId(id).addEventListener("input", e => d[key] = e.target.value));
   byId("education").addEventListener("change", e => d.education = e.target.value);
   byId("children").addEventListener("change", e => d.childrenInHousehold = e.target.value);
@@ -90,12 +127,16 @@ function renderDemographics() {
   byId("education").value = d.education || "";
   byId("children").value = d.childrenInHousehold || "";
   byId("consent").checked = Boolean(d.consent);
+  byId("consent").addEventListener("change", e => d.consent = e.target.checked);
+  byId("survey-content").addEventListener("input", saveDraft);
+  byId("survey-content").addEventListener("change", saveDraft);
   byId("to-clips").addEventListener("click", () => {
     d.participantName = byId("participantName").value.trim();
     if (!d.participantName) { alert("Please enter your name to continue."); byId("participantName").focus(); return; }
     if (!byId("consent").checked) { alert("Please provide consent to continue, or close the survey."); return; }
     d.consent = true; renderClip();
   });
+  saveDraft();
 }
 function multiSelectField(key, label, options) {
   return `<div class="field"><span class="field-label">${label}<span class="optional">OPTIONAL · SELECT ALL THAT APPLY</span></span><details class="multi-select" id="${key}-select"><summary id="${key}-summary">Choose ${key === "languages" ? "languages" : "genres"}</summary><div class="multi-options">${options.map((value, i) => `<label><input type="checkbox" data-multi="${key}" value="${escapeHtml(value)}" id="${key}-${i}"><span>${escapeHtml(value)}</span></label>`).join("")}</div></details></div>`;
@@ -127,15 +168,16 @@ function getEmbed(url) {
   return "";
 }
 function renderClip() {
+  currentScreen = "clip";
   const clip = config.clips[currentClip];
-  const step = currentClip + 2;
-  setProgress(step, 2 + config.clips.length, `CLIP ${currentClip + 1} / ${config.clips.length}`);
+  const clipNumber = currentClip + 1;
+  setProgress(clipNumber, config.clips.length, `CLIP ${clipNumber} / ${config.clips.length}`);
   const embed = getEmbed(clip.url || "");
   const ratings = (kind, label) => SETTINGS.map((setting, i) => `<div class="rating-row"><span>${setting}</span><div class="rating-options" role="radiogroup" aria-label="${label} ${setting}">${[1,2,3,4,5].map(n => `<span class="rating-option"><input type="radio" id="${kind}-${i}-${n}" name="${kind}-rating-${i}" value="${n}"><label for="${kind}-${i}-${n}">${n}</label></span>`).join("")}</div></div>`).join("");
-  byId("survey-content").innerHTML = `<h2>${escapeHtml(clip.title || `Clip ${currentClip+1}`)}</h2><p class="section-intro">Watch the clip, then rate how awkward you would feel about its visual and verbal content in each setting. Skip the clip if you prefer.</p>
-    <div class="clip-card"><div class="clip-frame">${embed ? `<iframe src="${escapeHtml(embed)}" title="${escapeHtml(clip.title || "Survey clip")}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>` : `<a class="clip-link" href="${escapeHtml(clip.url || "#")}" target="_blank" rel="noopener noreferrer">Open this clip in a new tab ↗</a>`}</div><div class="clip-copy"><strong>${escapeHtml(clip.title || "Video clip")}</strong>${clip.note ? `<p>${escapeHtml(clip.note)}</p>` : ""}</div></div>
-    <div class="rating-title">Visual awkwardness</div><p class="rating-scale">How awkward would the visual content feel? Choose one answer for each viewing situation.</p>${ratings("visual", "Visual awkwardness")}<div class="rating-ends"><span>1 · Not at all awkward</span><span>5 · Very awkward</span></div>
-    <div class="rating-title">Verbal awkwardness</div><p class="rating-scale">How awkward would the spoken or written content feel? Choose one answer for each viewing situation.</p>${ratings("verbal", "Verbal awkwardness")}<div class="rating-ends"><span>1 · Not at all awkward</span><span>5 · Very awkward</span></div>
+  byId("survey-content").innerHTML = `<h2>Clip ${clipNumber}</h2><p class="section-intro">Watch the clip, then rate how awkward you would feel about its visual and verbal content in each setting. Skip the clip if you prefer.</p>
+    <div class="clip-card"><div class="clip-frame">${embed ? `<iframe src="${escapeHtml(embed)}" title="${escapeHtml(clip.title || "Survey clip")}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>` : `<a class="clip-link" href="${escapeHtml(clip.url || "#")}" target="_blank" rel="noopener noreferrer">Open this clip in a new tab ↗</a>`}</div><div class="clip-copy"><strong>Clip ${clipNumber}</strong>${clip.note ? `<p>${escapeHtml(clip.note)}</p>` : ""}</div></div>
+    <div class="rating-title">Visual awkwardness</div><p class="rating-scale">How awkward would the visual content feel? Choose one answer for each viewing situation. 1 is least awkward and 5 is most awkward.</p>${ratings("visual", "Visual awkwardness")}<div class="rating-ends"><span>1 · Least awkward</span><span>5 · Most awkward</span></div>
+    <div class="rating-title">Verbal awkwardness</div><p class="rating-scale">How awkward would the spoken or written content feel? Choose one answer for each viewing situation. 1 is least awkward and 5 is most awkward.</p>${ratings("verbal", "Verbal awkwardness")}<div class="rating-ends"><span>1 · Least awkward</span><span>5 · Most awkward</span></div>
     <label class="choice skip-choice"><input type="checkbox" id="skip-clip"><span>Skip this clip</span></label>
     <div class="form-actions">${currentClip === 0 ? `<button class="back-button" id="back-demographics" type="button">← Back</button>` : `<button class="back-button" id="back-clip" type="button">← Previous clip</button>`}<button class="primary-button" id="next-clip" type="button">${currentClip + 1 === config.clips.length ? "Finish survey" : "Next clip"}<span aria-hidden="true">→</span></button></div>`;
   const saved = answers.ratings[currentClip];
@@ -144,13 +186,16 @@ function renderClip() {
     (saved.verbalScores || []).forEach((v,i) => { const el = document.querySelector(`input[name="verbal-rating-${i}"][value="${v}"]`); if (el) el.checked = true; });
   }
   byId("skip-clip").checked = saved?.skipped || false;
-  byId("back-demographics")?.addEventListener("click", renderDemographics);
+  byId("back-demographics")?.addEventListener("click", () => { collectRatings(); renderDemographics(); });
   byId("back-clip")?.addEventListener("click", () => { collectRatings(); currentClip--; renderClip(); });
+  byId("survey-content").addEventListener("change", () => { collectRatings(); saveDraft(); });
   byId("next-clip").addEventListener("click", () => {
     collectRatings();
     if (currentClip < config.clips.length - 1) { currentClip++; renderClip(); }
     else renderComplete();
   });
+  saveDraft();
+  byId("survey-screen").scrollIntoView({ block: "start" });
 }
 function collectRatings() {
   const skipped = byId("skip-clip").checked;
@@ -159,10 +204,12 @@ function collectRatings() {
   answers.ratings[currentClip] = { clipId: config.clips[currentClip].id, clipTitle: config.clips[currentClip].title, visualScores: skipped ? ["","","",""] : visualScores, verbalScores: skipped ? ["","","",""] : verbalScores, skipped };
 }
 function renderComplete() {
-  setProgress(config.clips.length + 2, config.clips.length + 2, "COMPLETE");
+  currentScreen = "complete";
+  setProgress(config.clips.length, config.clips.length, "COMPLETE");
   byId("survey-content").innerHTML = `<h2>Submit your response</h2><p class="section-intro">Your answers will be sent to the researcher's Google Sheet. You can also download a JSON copy for your records.</p><div class="complete-card" id="submission-card" aria-live="polite"><strong id="submission-title">Ready to submit</strong><p id="submission-message">Choose Submit response to send your answers securely to the survey spreadsheet.</p></div><div class="form-actions"><button class="small-button" id="download-response" type="button">Download JSON backup</button><button class="primary-button" id="submit-response" type="button">Submit response <span aria-hidden="true">→</span></button></div><p class="privacy-small">Your response includes the information you provided, including your name. Keep the JSON backup only if you want a local copy.</p>`;
   byId("download-response").addEventListener("click", downloadResponse);
   byId("submit-response").addEventListener("click", submitResponse);
+  saveDraft();
 }
 let pendingResponse = null;
 function makeResponse() {
@@ -211,6 +258,7 @@ async function submitResponse() {
     await confirmSubmission(response.submissionId);
     setSubmissionState("Response received", "The spreadsheet confirmed that your response was saved. You may download a JSON backup if you want one.", "success");
     button.textContent = "Submitted";
+    clearDraft();
   } catch (error) {
     setSubmissionState("Could not confirm submission", "Your response may not have reached the spreadsheet. Check your connection and try again, or download the JSON backup. Retrying will not create a duplicate.", "error");
     button.disabled = false;
