@@ -14,9 +14,8 @@ const DEFAULT_CLIPS = [
   {id:"clip-10",title:"Clip 10",url:"https://youtube.com/shorts/pPDAfWgO-4c?si=eEOKv2r5ku7jtOCL",note:""},
   {id:"clip-11",title:"Clip 11",url:"https://youtube.com/shorts/fdyfAVKRxfg?si=pS6wm2kpAvvZYVMn",note:""},
   {id:"domestic-violence-women",title:"Domestic violence against women",url:"https://www.youtube.com/shorts/7v_3OQUN0-M",note:"Visual content only; the audio is music."},
-  {id:"downrange-gore",title:"Downrange gore",url:"https://www.youtube.com/watch?v=7lIbKoTCFus&rco=1",note:"Please watch only the first 40 seconds."},
-  {id:"abuse-2",title:"Abuse 2",url:"https://youtu.be/jHn5u0PpPHs",note:""},
-  {id:"racism",title:"Racism",url:"https://youtube.com/shorts/icAquL0rG4I",note:""}
+  {id:"downrange-gore",title:"Downrange gore",url:"https://youtu.be/Ab3T9YJincI",note:"Please watch only the first 40 seconds."},
+  {id:"abuse-2",title:"Abuse 2",url:"https://youtu.be/jHn5u0PpPHs",note:""}
 ];
 // Paste the deployed Apps Script web app URL here (ends in /exec).
 const GOOGLE_SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwMWL3oGGtWQPuVEDamRs6m6I_vBtxWE43MPE5eqsS8Ornxx6kHz0KUFBBiPdv7zaFkog/exec";
